@@ -1,85 +1,105 @@
-import { createClient } from '@supabase/supabase-js'
+// Client-side Supabase service - now calls serverless functions
 
-let supabase = null
-
-export const initSupabase = (supabaseUrl, supabaseKey) => {
-    if (!supabaseUrl || !supabaseKey) return null
-    supabase = createClient(supabaseUrl, supabaseKey)
-    return supabase
-}
-
-// Get saved items (tweets or captions)
 export const getSavedItems = async (contentType = 'tweet') => {
-    if (!supabase) throw new Error('Supabase not initialized')
+    try {
+        const response = await fetch('/api/supabase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'getSaved',
+                contentType
+            })
+        });
 
-    const tableName = contentType === 'linkedin' ? 'linkedin_posts' : (contentType === 'instagram' ? 'captions' : 'tweets')
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to fetch saved items');
+        }
 
-    const { data, error } = await supabase
-        .from(tableName)
-        .select('*')
-        .order('created_at', { ascending: false })
+        const { data } = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error fetching saved items:', error);
+        throw error;
+    }
+};
 
-    if (error) throw error
-    return data
-}
-
-// Save item (tweet or caption)
 export const saveItem = async (content, contentType = 'tweet') => {
-    if (!supabase) throw new Error('Supabase not initialized')
+    try {
+        const response = await fetch('/api/supabase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'save',
+                contentType,
+                content
+            })
+        });
 
-    const tableName = contentType === 'linkedin' ? 'linkedin_posts' : (contentType === 'instagram' ? 'captions' : 'tweets')
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to save item');
+        }
 
-    const { data, error } = await supabase
-        .from(tableName)
-        .insert([{ content }])
-        .select()
-
-    if (error) {
-        console.error('Supabase save error:', error)
-        console.error('Error details:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code
-        })
-        throw error
+        const { data } = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error saving item:', error);
+        throw error;
     }
+};
 
-    if (!data || data.length === 0) {
-        throw new Error('No data returned from insert operation')
-    }
-
-    return data[0]
-}
-
-// Delete item
 export const deleteItem = async (id, contentType = 'tweet') => {
-    if (!supabase) throw new Error('Supabase not initialized')
+    try {
+        const response = await fetch('/api/supabase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'delete',
+                contentType,
+                id
+            })
+        });
 
-    const tableName = contentType === 'linkedin' ? 'linkedin_posts' : (contentType === 'instagram' ? 'captions' : 'tweets')
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to delete item');
+        }
 
-    const { error } = await supabase
-        .from(tableName)
-        .delete()
-        .eq('id', id)
+        return true;
+    } catch (error) {
+        console.error('Error deleting item:', error);
+        throw error;
+    }
+};
 
-    if (error) throw error
-}
-
-// Update item
 export const updateItem = async (id, content, contentType = 'tweet') => {
-    if (!supabase) throw new Error('Supabase not initialized')
+    try {
+        const response = await fetch('/api/supabase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'update',
+                contentType,
+                id,
+                content
+            })
+        });
 
-    const tableName = contentType === 'linkedin' ? 'linkedin_posts' : (contentType === 'instagram' ? 'captions' : 'tweets')
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to update item');
+        }
 
-    const { data, error } = await supabase
-        .from(tableName)
-        .update({ content })
-        .eq('id', id)
-        .select()
+        const { data } = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error updating item:', error);
+        throw error;
+    }
+};
 
-    if (error) throw error
-    return data[0]
-}
-
-
+// No longer needed - Supabase is initialized on the server
+export const initSupabase = () => {
+    console.log('Supabase is now initialized on the server');
+};

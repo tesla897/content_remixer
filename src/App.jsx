@@ -11,18 +11,11 @@ function App() {
   const [inputText, setInputText] = useState('')
   const [remixedContent, setRemixedContent] = useState([])
   const [isLoading, setIsLoading] = useState(false)
-
-  // Initialize from Environment Variables
-  const [apiKey, setApiKey] = useState(import.meta.env.VITE_DEEPSEEK_API_KEY || '')
   const [provider, setProvider] = useState('deepseek')
-  const [showApiKeyInput, setShowApiKeyInput] = useState(false)
 
   // Supabase State
-  const [supabaseUrl, setSupabaseUrl] = useState(import.meta.env.VITE_SUPABASE_URL || '')
-  const [supabaseKey, setSupabaseKey] = useState(import.meta.env.VITE_SUPABASE_ANON_KEY || '')
   const [savedContent, setSavedContent] = useState([])
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-  const [isSupabaseReady, setIsSupabaseReady] = useState(false)
 
   // Editing State
   const [editingIndex, setEditingIndex] = useState(-1)
@@ -32,12 +25,8 @@ function App() {
   const [contentType, setContentType] = useState('tweet')
 
   useEffect(() => {
-    if (supabaseUrl && supabaseKey) {
-      initSupabase(supabaseUrl, supabaseKey)
-      setIsSupabaseReady(true)
-      fetchSavedContent()
-    }
-  }, [supabaseUrl, supabaseKey, contentType])
+    fetchSavedContent()
+  }, [contentType])
 
   const fetchSavedContent = async () => {
     try {
@@ -51,22 +40,7 @@ function App() {
     }
   }
 
-  const handleSaveCredentials = () => {
-    if (supabaseUrl && supabaseKey) {
-      initSupabase(supabaseUrl, supabaseKey)
-      setIsSupabaseReady(true)
-      fetchSavedContent()
-      alert('Credentials applied for this session!')
-      setShowApiKeyInput(false)
-    }
-  }
-
   const handleSaveContent = async (contentToSave) => {
-    if (!isSupabaseReady) {
-      alert('Please configure Supabase first!')
-      setShowApiKeyInput(true)
-      return
-    }
     try {
       const newItem = await saveItem(contentToSave, contentType)
       if (!newItem) {
@@ -140,16 +114,11 @@ function App() {
   const handleRemix = async (e) => {
     if (e) e.preventDefault()
     if (!inputText.trim()) return
-    if (!apiKey.trim()) {
-      alert('Please enter your Deepseek API Key first!')
-      setShowApiKeyInput(true)
-      return
-    }
 
     setIsLoading(true)
     setRemixedContent([])
     try {
-      const result = await remixContent(inputText, apiKey, contentType, provider)
+      const result = await remixContent(inputText, contentType, provider)
       setRemixedContent(Array.isArray(result) ? result : [result])
     } catch (error) {
       console.error('Error remixing text:', error)
@@ -200,113 +169,52 @@ function App() {
                 <span className="font-medium hidden md:inline text-gray-700 group-hover:text-purple-600">Saved</span>
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => setShowApiKeyInput(!showApiKeyInput)}
-              className="glass-card px-3 py-2 md:px-4 text-sm flex items-center gap-2 hover:bg-gray-50 transition-all duration-300 group"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <span className="font-medium hidden md:inline">Settings</span>
-            </button>
           </div>
         </div>
 
-        {/* Settings Panel */}
-        <div className={`transition-all duration-500 ease-out overflow-hidden ${showApiKeyInput ? 'max-h-[500px] opacity-100 mb-4' : 'max-h-0 opacity-0 mb-0'}`}>
-          <div className="glass-card p-6 gradient-border space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-blue-600 mb-2 flex items-center gap-2">
-                <span>🤖</span> AI Provider
-              </label>
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                <button
-                  type="button"
-                  onClick={() => setProvider('deepseek')}
-                  className={`px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${provider === 'deepseek'
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md'
-                    : 'bg-white/60 text-gray-700 hover:bg-white hover:text-blue-600 border border-gray-200'
-                    }`}
-                >
-                  Deepseek
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setProvider('openai')}
-                  className={`px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${provider === 'openai'
-                    ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-md'
-                    : 'bg-white/60 text-gray-700 hover:bg-white hover:text-green-600 border border-gray-200'
-                    }`}
-                >
-                  OpenAI
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setProvider('gemini')}
-                  className={`px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${provider === 'gemini'
-                    ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-md'
-                    : 'bg-white/60 text-gray-700 hover:bg-white hover:text-purple-600 border border-gray-200'
-                    }`}
-                >
-                  Gemini
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setProvider('claude')}
-                  className={`px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${provider === 'claude'
-                    ? 'bg-gradient-to-r from-orange-600 to-orange-700 text-white shadow-md'
-                    : 'bg-white/60 text-gray-700 hover:bg-white hover:text-orange-600 border border-gray-200'
-                    }`}
-                >
-                  Claude
-                </button>
-              </div>
-
-              <label className="block text-sm font-semibold text-blue-600 mb-2 flex items-center gap-2">
-                <span>🔑</span> {provider.charAt(0).toUpperCase() + provider.slice(1)} API Key
-              </label>
-              <input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder={`Enter your ${provider} API key...`}
-                className="w-full glass-card px-4 py-3 text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:bg-gray-50 outline-none transition-all duration-300"
-              />
-            </div>
-
-            <div className="border-t border-gray-200 pt-4 mt-4">
-              <h3 className="text-sm font-bold text-gray-700 mb-3">Supabase Configuration (For Saved Content)</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Project URL</label>
-                  <input
-                    type="text"
-                    value={supabaseUrl}
-                    onChange={(e) => setSupabaseUrl(e.target.value)}
-                    placeholder="https://..."
-                    className="w-full glass-card px-3 py-2 text-sm text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:bg-gray-50 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Anon Key</label>
-                  <input
-                    type="password"
-                    value={supabaseKey}
-                    onChange={(e) => setSupabaseKey(e.target.value)}
-                    placeholder="eyJ..."
-                    className="w-full glass-card px-3 py-2 text-sm text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:bg-gray-50 outline-none"
-                  />
-                </div>
-              </div>
-              <button
-                onClick={handleSaveCredentials}
-                className="mt-3 px-4 py-2 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-800 transition-colors"
-              >
-                Apply Credentials
-              </button>
-            </div>
+        {/* AI Provider Selector */}
+        <div className="flex justify-center mb-4 flex-shrink-0">
+          <div className="glass-card p-1.5 inline-flex gap-1">
+            <button
+              type="button"
+              onClick={() => setProvider('deepseek')}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${provider === 'deepseek'
+                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+            >
+              Deepseek
+            </button>
+            <button
+              type="button"
+              onClick={() => setProvider('openai')}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${provider === 'openai'
+                ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-md'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+            >
+              OpenAI
+            </button>
+            <button
+              type="button"
+              onClick={() => setProvider('gemini')}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${provider === 'gemini'
+                ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-md'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+            >
+              Gemini
+            </button>
+            <button
+              type="button"
+              onClick={() => setProvider('claude')}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${provider === 'claude'
+                ? 'bg-gradient-to-r from-orange-600 to-orange-700 text-white shadow-md'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+            >
+              Claude
+            </button>
           </div>
         </div>
 
