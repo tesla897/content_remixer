@@ -5,6 +5,7 @@ import { remixContent } from './services/api'
 import { initSupabase, getSavedItems, saveItem, deleteItem, updateItem } from './services/supabase'
 import SavedContentDrawer from './components/SavedContentDrawer'
 import ContentCard from './components/ContentCard'
+import SettingsModal from './components/SettingsModal'
 import './App.css'
 
 function App() {
@@ -12,6 +13,8 @@ function App() {
   const [remixedContent, setRemixedContent] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [provider, setProvider] = useState('deepseek')
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [userKeys, setUserKeys] = useState({})
 
   // Supabase State
   const [savedContent, setSavedContent] = useState([])
@@ -30,7 +33,7 @@ function App() {
 
   const fetchSavedContent = async () => {
     try {
-      const items = await getSavedItems(contentType)
+      const items = await getSavedItems(contentType, userKeys.supabaseUrl, userKeys.supabaseKey)
       if (items) {
         const itemsWithType = items.map(item => ({ ...item, content_type: contentType }))
         setSavedContent(itemsWithType)
@@ -42,7 +45,7 @@ function App() {
 
   const handleSaveContent = async (contentToSave) => {
     try {
-      const newItem = await saveItem(contentToSave, contentType)
+      const newItem = await saveItem(contentToSave, contentType, userKeys.supabaseUrl, userKeys.supabaseKey)
       if (!newItem) {
         throw new Error('No data returned from save operation')
       }
@@ -73,7 +76,7 @@ function App() {
 
   const handleDeleteContent = async (id, itemContentType) => {
     try {
-      await deleteItem(id, itemContentType || contentType)
+      await deleteItem(id, itemContentType || contentType, userKeys.supabaseUrl, userKeys.supabaseKey)
       setSavedContent(savedContent.filter(t => t.id !== id))
     } catch (error) {
       console.error('Error deleting item:', error)
@@ -83,7 +86,7 @@ function App() {
 
   const handleUpdateSavedContent = async (id, newContent, itemContentType) => {
     try {
-      const updatedItem = await updateItem(id, newContent, itemContentType || contentType)
+      const updatedItem = await updateItem(id, newContent, itemContentType || contentType, userKeys.supabaseUrl, userKeys.supabaseKey)
       // Preserve content_type when updating
       updatedItem.content_type = itemContentType || contentType
       setSavedContent(savedContent.map(t => t.id === id ? updatedItem : t))
@@ -118,7 +121,7 @@ function App() {
     setIsLoading(true)
     setRemixedContent([])
     try {
-      const result = await remixContent(inputText, contentType, provider)
+      const result = await remixContent(inputText, contentType, provider, userKeys[`${provider}ApiKey`])
       setRemixedContent(Array.isArray(result) ? result : [result])
     } catch (error) {
       console.error('Error remixing text:', error)
@@ -152,7 +155,17 @@ function App() {
           </header>
 
           {/* Right Buttons */}
-          <div className="flex gap-2 w-20 md:w-32 justify-end flex-shrink-0 z-20">
+          <div className="flex gap-2 w-auto justify-end flex-shrink-0 z-20">
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="glass-card p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-all duration-300"
+              title="Settings"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
             {savedContent.length > 0 && (
               <button
                 onClick={() => setIsDrawerOpen(true)}
@@ -172,51 +185,7 @@ function App() {
           </div>
         </div>
 
-        {/* AI Provider Selector */}
-        <div className="flex justify-center mb-4 flex-shrink-0">
-          <div className="glass-card p-1.5 inline-flex gap-1">
-            <button
-              type="button"
-              onClick={() => setProvider('deepseek')}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${provider === 'deepseek'
-                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-            >
-              Deepseek
-            </button>
-            <button
-              type="button"
-              onClick={() => setProvider('openai')}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${provider === 'openai'
-                ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-md'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-            >
-              OpenAI
-            </button>
-            <button
-              type="button"
-              onClick={() => setProvider('gemini')}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${provider === 'gemini'
-                ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-md'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-            >
-              Gemini
-            </button>
-            <button
-              type="button"
-              onClick={() => setProvider('claude')}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${provider === 'claude'
-                ? 'bg-gradient-to-r from-orange-600 to-orange-700 text-white shadow-md'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-            >
-              Claude
-            </button>
-          </div>
-        </div>
+
 
         {/* Content Type Selector */}
         <div className="flex justify-center mb-4 flex-shrink-0">
@@ -381,6 +350,16 @@ function App() {
         onDelete={handleDeleteContent}
         onShare={handleShare}
         onUpdate={handleUpdateSavedContent}
+      />
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        provider={provider}
+        setProvider={setProvider}
+        userKeys={userKeys}
+        setUserKeys={setUserKeys}
+        onSave={() => { }}
       />
     </div>
   )
