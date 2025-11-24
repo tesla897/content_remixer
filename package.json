@@ -10,11 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.84.0",
     "@tailwindcss/typography": "^0.5.19",
     "node-fetch": "^3.3.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-markdown": "^10.1.0",
+    "react-swipeable": "^7.0.2",
     "react-textarea-autosize": "^8.5.9"
   },
   "devDependencies": {
